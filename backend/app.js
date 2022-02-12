@@ -1,28 +1,32 @@
 'use strict';
 
+//Start from express
 var express = require('express');
-var timeout = require('connect-timeout');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
-var AV = require('leanengine');
-var cors = require('cors')
-
 var app = express();
+
+//LeanCloud
+var AV = require('leanengine');
+app.use(AV.express());
+app.enable('trust proxy');
+
+//Cors
+var cors = require('cors')
 app.use(cors())
 
+//Gzip
+var compression = require('compression')
+app.use(compression())
 
-// 设置默认超时时间
+//Timeout
+var timeout = require('connect-timeout');
 app.use(timeout('15s'));
 
-// 加载云引擎中间件
-app.use(AV.express());
-
-app.enable('trust proxy');
-// 需要重定向到 HTTPS 可去除下一行的注释。
-// app.use(AV.Cloud.HttpsRedirect());
-
+//Parsers
+var bodyParser = require('body-parser');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+var cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
 // ------------ 应用功能代码开始 ------------
