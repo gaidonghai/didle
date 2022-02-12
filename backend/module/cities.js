@@ -77,11 +77,22 @@ class City {
         )
 
         function svgPolygonsFunc(polygon) {
-            return polygon.map(point => {
+            let points = polygon.map(point => {
                 let [x, y] = point;
                 [x, y] = [(x - boxCenter.x) / scaleFactor, (y - boxCenter.y) / scaleFactor];
-                return `${(x + 0.5) * dimension},${(-y + 0.5) * dimension}`
-            }).join(' ')
+                x = Math.round((x + 0.5) * dimension);
+                y = Math.round((-y + 0.5) * dimension);
+                return [x, y];
+            });
+
+            //Remove duplicated or close points.
+            for (let i = points.length-1; i > 0; i--) {
+                let curr=points[i];
+                let prev=points[i-1];
+                if((Math.abs(curr[0]-prev[0])+Math.abs(curr[1]-prev[1]))<2) delete points[i]
+            }
+
+            return points.map(o => o.join(',')).join(' ');
         }
 
         return this.polygons.map(svgPolygonsFunc)
@@ -100,7 +111,7 @@ class City {
         const canvas = SVG(document.documentElement).size(dimension, dimension)
 
         // use svg.js as normal
-        this.svgPolygons.forEach(o=>canvas.polygon(o).fill('#111111'))
+        this.svgPolygons.forEach(o => canvas.polygon(o).fill('#111111'))
 
         // get your svg as string
         return canvas.svg();
@@ -109,7 +120,24 @@ class City {
 
 
 var cityData = require('./cityData.json');
-let cities = [undefined].concat(cityData.features.map(o => new City(o)));
-console.log('Load!')
-
+let cities = {total: cityData.features.length, data: {}};
+cityData.features.forEach(o => {
+    let city = new City(o);
+    cities.data[Number(city.OBJECTID)] = city;
+})
+cities.byId = function (n) {
+    n = Number(n);
+    n = n % this.total;
+    if (n === 0) n = this.total;
+    return cities.data[n];
+}
+cities.basics = function () {
+    return Object.values(this.data).map(o => ({
+        id: o.OBJECTID,
+        provCh: o.Prov_CH,
+        cityCh: o.City_CH,
+        cityEn: o.City_EN
+    }))
+}
+console.log('City data loaded successfully!')
 module.exports = cities;

@@ -18,25 +18,23 @@
           </el-option>
         </el-select>
 
-        <el-table v-if="answers.length" :data="answers">
+        <el-table v-if="answers.length" :data="answers" :show-header="false">
           <el-table-column prop="attempt" label="城市"/>
-          <el-table-column prop="direction" label="目标方向"/>
-          <el-table-column prop="distance" label="目标距离(km)"/>
+          <el-table-column prop="message" label="目标"/>
         </el-table>
 
 
       </div>
 
-      <hr>
-
 
     </el-main>
     <el-footer>
       <div>
-      <el-link disabled>{{currentUrl}}</el-link>
-      </div><div>
-        <el-button type="success" @click="copyClipboard">复制链接</el-button>
-        <el-button type="primary" @click="randomize">随机新局</el-button>
+        <el-link disabled>{{ currentUrl() }}</el-link>
+      </div>
+      <div>
+        <el-button type="success" @click="copyClipboardGame">分享结果</el-button>
+        <el-button type="primary" @click="initialize">随机新局</el-button>
       </div>
     </el-footer>
   </el-container>
@@ -46,7 +44,9 @@
 <script>
 
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import {ElMessage} from 'element-plus'
+import {copyText} from 'vue3-clipboard'
+
 
 export default {
   name: 'App',
@@ -54,55 +54,65 @@ export default {
   data() {
     return {
       cities: [],
-      currentUrl: window.location.href,
       id: null,
       polygons: [],
       options: [],
-      answers:[]
+      answers: []
     }
   },
   methods: {
+    currentUrl() {
+      return window.location.origin + '/?id=' + this.id;
+    },
     select(val) {
       axios.get(this.apiServer + val + '/' + this.id).then(res => {
         let o = this.cities[val - 1];
-        let directions = "↑↗→↘↓↙←↖↑";
+        let direction = res.data.direction ? "⬆↗➡↘⬇↙⬅↖⬆"[Math.round(res.data.direction / 45)] : '';
+        let remoteness = Math.min(Math.ceil(Math.log(res.data.distance / 150 + 1) / Math.log(2)), 5)
+        let message = Array(remoteness).fill(direction).join('') + Array(5 - remoteness).fill("✅").join('')
         this.answers.push({
           attempt: o.provCh + o.cityCh,
-          direction: res.data.direction?directions[Math.floor(res.data.direction / 45)]:'',
-          distance: res.data.distance
+          message
         })
       })
     },
-    copyClipboard() {
-      navigator.clipboard.writeText(this.currentUrl);
-      ElMessage({
-        message: '链接已复制',
-        type: 'success',
+
+    copyClipboardGame() {
+      let message = []
+          .concat('#Didle ' + this.id)
+          .concat(this.answers.map(o => o.message))
+          .concat(this.currentUrl())
+          .join('\n');
+
+      copyText(message, undefined, (error) => {
+        if (error) {
+          alert(error)
+        } else {
+          ElMessage.success('Game state copied!')
+        }
       })
     },
-    randomize() {
-      let totalCityCount = this.cities.length;
-      let randomId = Math.floor(Math.random() * totalCityCount) + 1;
-      let randomMultiplier = Math.floor(Math.random() * 1000) + 223;
-      let newId = randomId + 787 * randomMultiplier;
-      window.location.href = '/?id=' + newId;
+    async initialize(id) {
+      id=Number(id);
+      if(!id) id = Math.floor(Math.random() * 1e4)
+      this.polygons = [];
+      this.answers = [];
+      this.id =id;
+      this.polygons = (await axios.get(this.apiServer + 'svgPolygons/' + this.id)).data
     }
   },
   async mounted() {
 
     //City options
     this.cities = (await axios.get(this.apiServer + 'all/')).data
-
-    let urlParams = new URLSearchParams(window.location.search);
-    this.id = (urlParams.get('id')) % 787;
-    if (!this.id) this.randomize();
-
     this.options = this.cities.map(o => ({
       value: o.id,
       label: o.provCh + o.cityCh + " " + o.cityEn
     }))
 
-    this.polygons = (await axios.get(this.apiServer + 'svgPolygons/' + this.id)).data
+    let urlParams = new URLSearchParams(window.location.search);
+    await this.initialize(urlParams.get('id'));
+
 
 
   }
@@ -111,7 +121,6 @@ export default {
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
