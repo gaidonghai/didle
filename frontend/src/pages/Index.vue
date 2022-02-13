@@ -53,7 +53,8 @@
 <script>
 
 import {defineComponent} from "vue";
-import {useQuasar, copyToClipboard} from 'quasar'
+import {copyText} from 'vue3-clipboard'
+import {useQuasar} from 'quasar'
 
 export default defineComponent({
   name: "PageIndex",
@@ -159,8 +160,10 @@ export default defineComponent({
         .concat(this.currentUrl())
         .join('\n');
 
-      copyToClipboard(message)
-        .then(() => {
+      copyText(message,undefined,(error)=> {
+        if(error) {
+          alert(error)
+        } else {
           this.notification();
           this.notification = this.quasar.notify({
             message: '已复制到剪贴板',
@@ -168,10 +171,8 @@ export default defineComponent({
             position: 'top',
             timeout: 1000
           })
-        })
-        .catch((err) => {
-          alert(err)
-        })
+        }
+      })
     }
   }
 });
