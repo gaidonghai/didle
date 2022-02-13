@@ -36,7 +36,7 @@ app.use(express.static('frontend_build'));
 
 // API接口
 app.use('/api/echo', require('./routes/echo'));
-app.use('/api/city', require('./routes/cityRoutes'));
+app.use('/api/city', require('./routes/city'));
 
 
 // ------------ 应用功能代码结束 ------------
@@ -72,10 +72,11 @@ app.use(function(err, req, res, next) {
     // 如果是开发环境，则将异常堆栈输出到页面，方便开发调试
     error = err;
   }
-  res.render('error', {
+  res.send({
     message: err.message,
     error: error
   });
+  console.error(err);
 });
 
 module.exports = app;

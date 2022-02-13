@@ -53,7 +53,6 @@
 <script>
 
 import {defineComponent} from "vue";
-import {copyText} from 'vue3-clipboard'
 import {useQuasar, copyToClipboard} from 'quasar'
 
 export default defineComponent({
@@ -91,25 +90,24 @@ export default defineComponent({
       })
     }
 
-    console.log(columnDef)
     return {
-      $q: useQuasar(),
+      quasar: useQuasar(),
       columnDef
     }
   },
   async mounted() {
     //City options
     this.cities = (await this.$api.get('/all')).data
-    this.currentOptions = this.options = this.cities.map(o => ({
-      value: o.id,
-      label: o.provCh + o.cityCh + " " + o.cityEn
+    this.currentOptions = this.options = this.cities.map((o, i) => ({
+      value: i,
+      label: o.fullCH,
+      search: o.fullCH + o.cityPY + o.cityInitialPY
     }))
 
     //Initialize
     let urlParams = new URLSearchParams(window.location.search);
-    await this.initialize(urlParams.get('id'));
-  }
-  ,
+    await this.initialize(urlParams.get('id') || this.$route.params.id);
+  },
 
   methods: {
     //Initialize with given or randomized id
@@ -121,24 +119,23 @@ export default defineComponent({
       this.id = id;
       this.polygons = (await this.$api.get(`/svgPolygons/${this.id}`)).data
       let o = this.cities[id % this.cities.length];
-      console.log(`Game initialized with: ${id} (${o.provCh + o.cityCh})`)
-    }
-    ,
+      console.log(`Game initialized with: ${id} (${o.fullCH})`)
+    },
 
     currentUrl() {
       return window.location.origin + '/?id=' + this.id;
-    }
-    ,
+    },
+
     filterFn(val, update, abort) {
       update(() => {
         const needle = val.toLowerCase()
-        this.currentOptions = this.options.filter(v => v.label.toLowerCase().indexOf(needle) > -1)
+        this.currentOptions = this.options.filter(v => v.search.toLowerCase().indexOf(needle) > -1)
       })
-    }
-    ,
+    },
+
     select(val) {
-      let cityPickedByUser = this.cities[val - 1];
-      let cityFullName = cityPickedByUser.provCh + cityPickedByUser.cityCh
+      let cityPickedByUser = this.cities[val];
+      let cityFullName = cityPickedByUser.fullCH;
       console.log(`User selected: ${val} (${cityFullName})`)
       this.$api.get(`/${val}/${this.id}`).then(res => {
         let distance = res.data.distance;
@@ -152,10 +149,8 @@ export default defineComponent({
           message
         });
         this.userInput = '';
-
       })
-    }
-    ,
+    },
 
     copyClipboardGame() {
       let message = []
@@ -167,7 +162,7 @@ export default defineComponent({
       copyToClipboard(message)
         .then(() => {
           this.notification();
-          this.notification = this.$q.notify({
+          this.notification = this.quasar.notify({
             message: '已复制到剪贴板',
             color: 'green',
             position: 'top',
@@ -179,6 +174,5 @@ export default defineComponent({
         })
     }
   }
-})
-;
+});
 </script>
