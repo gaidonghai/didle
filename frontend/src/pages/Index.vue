@@ -142,7 +142,15 @@ export default defineComponent({
         let distance = res.data.distance;
         let direction = res.data.direction;
         let arrow = direction ? "⬆↗➡↘⬇↙⬅↖⬆"[Math.round(direction / 45)] : '';
-        let remoteness = Math.min(Math.ceil(Math.log(distance / 150 + 1) / Math.log(2)), 5)
+        let remotenessFunc = (distance, one, multiplier = 2, cap = 5) => {
+          if (distance <= 0) return 0;
+          if (distance <= one) return 1;
+          let result;
+          result = Math.ceil(Math.log(distance / one) / Math.log(multiplier)) + 1;
+          result = Math.min(result, cap);
+          return result;
+        }
+        let remoteness = remotenessFunc(distance, 150);
         let message = Array(remoteness).fill(arrow).join('') + Array(5 - remoteness).fill("✅").join('')
         console.log({distance, direction, message})
         this.answers.push({
@@ -160,8 +168,8 @@ export default defineComponent({
         .concat(this.currentUrl())
         .join('\n');
 
-      copyText(message,undefined,(error)=> {
-        if(error) {
+      copyText(message, undefined, (error) => {
+        if (error) {
           alert(error)
         } else {
           this.notification();
